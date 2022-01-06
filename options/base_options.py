@@ -23,7 +23,7 @@ class BaseOptions():
         parser.add_argument('--dataroot', required=True, help='path to images (should have subfolders trainA, trainB, valA, valB, etc)')
         parser.add_argument('--name', type=str, default='experiment_name', help='name of the experiment. It decides where to store samples and models')
         parser.add_argument('--use_wandb', action='store_true', help='use wandb')
-        parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
+        parser.add_argument('--gpu_ids', type=str, default='1', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
         parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
         # model parameters
         parser.add_argument('--model', type=str, default='cycle_gan', help='chooses which model to use. [cycle_gan | pix2pix | test | colorization]')
@@ -42,8 +42,8 @@ class BaseOptions():
         parser.add_argument('--dataset_mode', type=str, default='unaligned', help='chooses how datasets are loaded. [unaligned | aligned | single | colorization]')
         parser.add_argument('--direction', type=str, default='AtoB', help='AtoB or BtoA')
         parser.add_argument('--serial_batches', action='store_true', help='if true, takes images in order to make batches, otherwise takes them randomly')
-        parser.add_argument('--num_threads', default=4, type=int, help='# threads for loading data')
-        parser.add_argument('--batch_size', type=int, default=1, help='input batch size')
+        parser.add_argument('--num_threads', default=8, type=int, help='# threads for loading data')
+        parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
         parser.add_argument('--load_size', type=int, default=286, help='scale images to this size')
         parser.add_argument('--crop_size', type=int, default=256, help='then crop to this size')
         parser.add_argument('--max_dataset_size', type=int, default=float("inf"), help='Maximum number of samples allowed per dataset. If the dataset directory contains more than max_dataset_size, only a subset is loaded.')
@@ -111,7 +111,7 @@ class BaseOptions():
             opt_file.write(message)
             opt_file.write('\n')
 
-    def parse(self):
+    def parse(self, test=False):
         """Parse our options, create checkpoints directory suffix, and set up gpu device."""
         opt = self.gather_options()
         opt.isTrain = self.isTrain   # train or test
@@ -120,8 +120,9 @@ class BaseOptions():
         if opt.suffix:
             suffix = ('_' + opt.suffix.format(**vars(opt))) if opt.suffix != '' else ''
             opt.name = opt.name + suffix
-
-        self.print_options(opt)
+        
+        if not test:
+            self.print_options(opt)
 
         # set gpu ids
         str_ids = opt.gpu_ids.split(',')

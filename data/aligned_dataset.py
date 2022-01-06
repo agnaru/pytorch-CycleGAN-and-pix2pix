@@ -18,7 +18,12 @@ class AlignedDataset(BaseDataset):
             opt (Option class) -- stores all the experiment flags; needs to be a subclass of BaseOptions
         """
         BaseDataset.__init__(self, opt)
-        self.dir_AB = os.path.join(opt.dataroot, opt.phase)  # get the image directory
+        self.dir_A = os.path.join(opt.dataroot, opt.phase + 'A')  # create a path '/path/to/data/trainA'
+        self.dir_B = os.path.join(opt.dataroot, opt.phase + 'B')  # create a path '/path/to/data/trainB'
+        
+        self.A_paths = sorted(make_dataset(self.dir_A, opt.max_dataset_size))   # load images from '/path/to/data/trainA'
+        self.B_paths = sorted(make_dataset(self.dir_B, opt.max_dataset_size))    # load images from '/path/to/data/trainB'
+        
         self.AB_paths = sorted(make_dataset(self.dir_AB, opt.max_dataset_size))  # get image paths
         assert(self.opt.load_size >= self.opt.crop_size)   # crop_size should be smaller than the size of loaded image
         self.input_nc = self.opt.output_nc if self.opt.direction == 'BtoA' else self.opt.input_nc

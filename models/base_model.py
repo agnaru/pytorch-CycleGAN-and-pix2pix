@@ -4,6 +4,8 @@ from collections import OrderedDict
 from abc import ABC, abstractmethod
 from . import networks
 
+import wandb
+
 
 class BaseModel(ABC):
     """This class is an abstract base class (ABC) for models.
@@ -141,7 +143,7 @@ class BaseModel(ABC):
                 errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
         return errors_ret
 
-    def save_networks(self, epoch):
+    def save_networks(self, epoch, use_wandb=False):
         """Save all the networks to the disk.
 
         Parameters:
@@ -158,6 +160,15 @@ class BaseModel(ABC):
                     net.cuda(self.gpu_ids[0])
                 else:
                     torch.save(net.cpu().state_dict(), save_path)
+                    
+                if use_wandb:
+                    save_path = os.path.join(wandb.run.dir, save_filename)
+                    
+                    if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+                        torch.save(net.module.cpu().state_dict(), save_path)
+                        net.cuda(self.gpu_ids[0])
+                    else:
+                        torch.save(net.cpu().state_dict(), save_path)
 
     def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
         """Fix InstanceNorm checkpoints incompatibility (prior to 0.4)"""

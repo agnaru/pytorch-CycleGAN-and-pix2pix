@@ -41,3 +41,9 @@ test/.coverage
 test/data/legacy_serialized.pt
 *~
 .idea
+# newly added
+*.ipynb_checkpoints/
+*.ipynb
+*.pkl
+*.tar.gz
+*.gif

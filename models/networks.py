@@ -8,7 +8,88 @@ from torch.optim import lr_scheduler
 ###############################################################################
 # Helper Functions
 ###############################################################################
+import numpy as np
+from PIL import Image
+import torchvision.transforms as transforms
 
+def get_custom_transform(params=None, grayscale=False, method=Image.BICUBIC, convert=True):
+    transform_list = []
+    transform_list.append(transforms.Lambda(lambda img: transforms.functional.crop(img, top=0, left=80, height=480, width=480)))
+    if params is None:
+        transform_list.append(transforms.RandomHorizontalFlip())
+
+    if convert:
+        transform_list += [transforms.ToTensor()]
+        transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    return transforms.Compose(transform_list)
+
+def tensor2im(input_image, imtype=np.uint8):
+    """"Converts a Tensor array into a numpy image array.
+
+    Parameters:
+        input_image (tensor) --  the input image tensor array
+        imtype (type)        --  the desired type of the converted numpy array
+    """
+    if not isinstance(input_image, np.ndarray):
+        if isinstance(input_image, torch.Tensor):  # get the data from a variable
+            image_tensor = input_image.data
+        else:
+            return input_image
+        image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
+        if image_numpy.shape[0] == 1:  # grayscale to RGB
+            image_numpy = np.tile(image_numpy, (3, 1, 1))
+        image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
+    else:  # if it is a numpy array, do nothing
+        image_numpy = input_image
+    return image_numpy.astype(imtype)
+
+
+class ConvertNight2Day():
+    def __init__(self, gpu_ids=[]):
+        self.netG_B = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                           False, 'normal', 0.02, gpu_ids)
+        self.gpu_ids = gpu_ids
+        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')
+        self.transform = get_custom_transform()
+        
+    def load_networks(self, ckpt_dir):
+        net = getattr(self, 'netG_B')
+        if isinstance(net, torch.nn.DataParallel):
+            net = net.module
+        print('loading the model from %s' % ckpt_dir)
+        state_dict = torch.load(ckpt_dir, map_location=str(self.device))
+        if hasattr(state_dict, '_metadata'):
+            del state_dict._metadata
+            
+        for key in list(state_dict.keys()):  # need to copy keys here because we mutate in loop
+            self.__patch_instance_norm_state_dict(state_dict, net, key.split('.'))
+        net.load_state_dict(state_dict)
+                
+    def forward(self, data):
+        data = self.transform(data)
+        if len(data.shape) == 3:
+            data = data.view(-1, 3, 480, 480)
+        transfer = self.netG_B(data)
+        return tensor2im(transfer)
+    
+    
+    def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
+        """Fix InstanceNorm checkpoints incompatibility (prior to 0.4)"""
+        key = keys[i]
+        if i + 1 == len(keys):  # at the end, pointing to a parameter/buffer
+            if module.__class__.__name__.startswith('InstanceNorm') and \
+                    (key == 'running_mean' or key == 'running_var'):
+                if getattr(module, key) is None:
+                    state_dict.pop('.'.join(keys))
+            if module.__class__.__name__.startswith('InstanceNorm') and \
+               (key == 'num_batches_tracked'):
+                state_dict.pop('.'.join(keys))
+        else:
+            self.__patch_instance_norm_state_dict(state_dict, getattr(module, key), keys, i + 1)
+
+
+
+#-------
 
 class Identity(nn.Module):
     def forward(self, x):
