@@ -1,0 +1,45 @@
+program: train.py
+method: bayes
+name: "Cnt"
+project: "night2day"
+entity: "agnaru"
+metric:
+  name: best_eval_rmse
+  goal: minimize
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - "--use_wandb"
+  - "--gpu_ids"
+  - "0, 1"
+  - "--num_threads"
+  - "4"
+  - "--eval_metric"
+  - "count"
+  - ${args}
+parameters:
+  dataroot:
+    value: "./datasets/plant/"
+  model:
+    value: "cycle_gan"
+  name: 
+    value: "n2d_plant"
+  preprocess:
+    value: 'resize'
+  suffix:
+    value: "20220106"
+  load_size:
+    value: 64
+  lr:
+    min: 0.00001
+    max: 0.001
+  netD:
+    values: ["basic", "pixel"]
+  netG:
+    values: ["resnet_9blocks", "resnet_6blocks", "unet_256", "unet_128"]
+  gan_mode:
+    values: ["lsgan", "wgangp"]
+
+ 
+  

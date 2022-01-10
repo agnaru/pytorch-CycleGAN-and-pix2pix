@@ -1,7 +1,7 @@
 program: train.py
 method: bayes
-name: "CycleGAN_sweep"
-project: "CycleGAN-and-pix2pix"
+name: "Color"
+project: "night2day"
 entity: "agnaru"
 metric:
   name: best_eval_rmse
@@ -12,9 +12,9 @@ command:
   - ${program}
   - "--use_wandb"
   - "--gpu_ids"
-  - "1"
+  - "2, 3"
   - "--num_threads"
-  - "0"
+  - "4"
   - ${args}
 parameters:
   dataroot:
@@ -23,14 +23,18 @@ parameters:
     value: "cycle_gan"
   name: 
     value: "n2d_plant"
-  gpu_ids:
-    value: 1
   preprocess:
     value: 'resize'
   suffix:
-    value: "20211216"
+    value: "20220106"
   load_size:
     value: 64
   lr:
     min: 0.00001
     max: 0.001
+  netD:
+    values: ["basic", "pixel"]
+  netG:
+    values: ["resnet_9blocks", "resnet_6blocks", "unet_256", "unet_128"]
+  gan_mode:
+    values: ["lsgan", "wgangp"]
